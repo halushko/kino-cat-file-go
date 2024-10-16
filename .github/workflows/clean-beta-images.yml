@@ -1,0 +1,54 @@
+name: Delete Docker images on merge to development
+
+on:
+  pull_request:
+    branches:
+      - development
+    types:
+      - closed
+
+jobs:
+  delete_docker_images:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate Docker token
+        id: generate_token
+        run: |
+          DH_RESPONSE=$(curl -X POST -H "Content-Type: application/json" -d '{"username":"${{ secrets.DOCKER_HUB_USERNAME }}", "password":"${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}"}' https://hub.docker.com/v2/users/login/)
+          echo "Response $DH_RESPONSE"
+          DH_TOKEN=$(echo $DH_RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+          echo "DOCKER_TOKEN=$DH_TOKEN" >> $GITHUB_ENV
+
+      - name: Extract branch name
+        id: extract_branch
+        run: |
+          BRANCH_NAME=$(echo "${{ github.event.pull_request.head.ref }}" | sed 's/[\/]/-/g')
+          echo "SANITIZED_BRANCH_NAME=beta-${BRANCH_NAME}" >> $GITHUB_ENV
+          echo "Branch being merged: beta-${BRANCH_NAME}"
+
+      - name: Get list of Docker tags to delete
+        id: list_tags
+        run: |
+          REPO_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/kino-cat-file-go"
+          BRANCH_NAME=${{ env.SANITIZED_BRANCH_NAME }}
+          DOCKER_TOKEN=${{ env.DOCKER_TOKEN }}
+
+          curl -s -H "Authorization: JWT $DOCKER_TOKEN" \
+            "https://hub.docker.com/v2/repositories/$REPO_NAME/tags/?page_size=100" \
+            | jq -r --arg BRANCH_NAME "$BRANCH_NAME" '.results[] | select(.name | test("^" + $BRANCH_NAME + "-[0-9]{14}$")) | .name' > tags_to_delete.txt
+
+          cat tags_to_delete.txt
+
+      - name: Delete Docker images
+        run: |
+          REPO_NAME="${{ secrets.DOCKER_HUB_USERNAME }}/kino-cat-file-go"
+          DOCKER_TOKEN=${{ env.DOCKER_TOKEN }}
+          while read -r TAG; do
+            echo "Deleting tag: $TAG"
+            curl -s -X DELETE -H "Authorization: JWT $DOCKER_TOKEN" \
+              "https://hub.docker.com/v2/repositories/$REPO_NAME/tags/$TAG/"
+          done < tags_to_delete.txt
