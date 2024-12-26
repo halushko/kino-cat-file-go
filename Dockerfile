@@ -6,6 +6,8 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 go build -o /app/kino-cat-file-go
 
 FROM alpine:latest
+RUN apk update && apk add --no-cache transmission-cli
+RUN mkdir -p /app/torrent_files/ && chmod -R 777 /app/torrent_files/
 WORKDIR /root/
 COPY --from=builder /app/kino-cat-file-go .
 CMD ["./kino-cat-file-go"]
