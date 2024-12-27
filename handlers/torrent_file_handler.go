@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/halushko/kino-cat-core-go/nats_helper"
 	"io"
@@ -9,8 +10,16 @@ import (
 	"os"
 )
 
-const TgBotApi = "https://api.telegram.org/file/bot%s/%s"
+const TgBotApiGetFile = "https://api.telegram.org/bot%s/getFile?file_id=%s"
+const TgBotApiDownload = "https://api.telegram.org/file/bot%s/%s"
 const TorrentFilesPath = "/app/torrent_files/%s"
+
+type getFileResponse struct {
+	Ok     bool `json:"ok"`
+	Result struct {
+		FilePath string `json:"file_path"`
+	} `json:"result"`
+}
 
 func StartGetTorrentFileListener() {
 	processor := func(data []byte) {
@@ -27,26 +36,22 @@ func StartGetTorrentFileListener() {
 				log.Printf("[StartGetTorrentFileListener] BOT_TOKEN не задано")
 				return
 			}
-			fileURL := fmt.Sprintf(TgBotApi, botToken, fileId)
-			savePath := ""
 
-			switch {
-			case mimeType == "application/x-bittorrent":
-				savePath = fmt.Sprintf(TorrentFilesPath, fileName)
-			case mimeType == "application/pdf":
-				savePath = ""
+			filePath, err := getFilePathFromTelegram(botToken, fileId)
+			if err != nil {
+				log.Printf("[StartGetTorrentFileListener] Помилка отримання шляху до файлу: %v", err)
+				return
 			}
 
-			if savePath != "" {
-				if err := downloadFile(fileURL, savePath); err != nil {
-					log.Printf("[StartGetTorrentFileListener] Помилка скачування файлу: %v", err)
-					return
-				}
+			fileURL := fmt.Sprintf(TgBotApiDownload, botToken, filePath)
+			savePath := fmt.Sprintf(TorrentFilesPath, fileName)
 
-				log.Printf("[StartGetTorrentFileListener] Файл \"%s\" вдало збережено у \"%s\"", fileName, savePath)
-			} else {
-				log.Printf("[StartGetTorrentFileListener] Директорію для файлу типу \"%s\" не задано", mimeType)
+			if err := downloadFile(fileURL, savePath); err != nil {
+				log.Printf("[StartGetTorrentFileListener] Помилка скачування файлу: %v", err)
+				return
 			}
+
+			log.Printf("[StartGetTorrentFileListener] Файл \"%s\" вдало збережено у \"%s\"", fileName, savePath)
 		}
 	}
 
@@ -59,12 +64,36 @@ func StartGetTorrentFileListener() {
 	}
 }
 
+func getFilePathFromTelegram(botToken, fileId string) (string, error) {
+	url := fmt.Sprintf(TgBotApiGetFile, botToken, fileId)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("Помилка виконання запиту getFile: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Неправильний статус відповіді getFile: %s", resp.Status)
+	}
+
+	var result getFileResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("Помилка розбору відповіді getFile: %w", err)
+	}
+
+	if !result.Ok {
+		return "", fmt.Errorf("getFile повернув помилку")
+	}
+
+	return result.Result.FilePath, nil
+}
+
 func downloadFile(url string, savePath string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("[downloadFile] Помилка завантаження файлу: %w", err)
 	}
-	//goland:noinspection GoUnhandledErrorResult
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -75,7 +104,6 @@ func downloadFile(url string, savePath string) error {
 	if err != nil {
 		return fmt.Errorf("[downloadFile] Помилка створення файлу: %w", err)
 	}
-	//goland:noinspection GoUnhandledErrorResult
 	defer out.Close()
 
 	_, err = io.Copy(out, resp.Body)
