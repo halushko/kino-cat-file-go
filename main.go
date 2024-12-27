@@ -1,4 +1,4 @@
-package kino_cat_file_go
+package main
 
 import (
 	"github.com/halushko/kino-cat-core-go/logger_helper"
