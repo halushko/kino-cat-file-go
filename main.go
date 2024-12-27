@@ -8,7 +8,9 @@ import (
 //goland:noinspection ALL
 func main() {
 	logFile := logger_helper.SoftPrepareLogFile()
+
 	go handlers.StartGetTorrentFileListener()
 
+	select {}
 	defer logger_helper.SoftLogClose(logFile)
 }
