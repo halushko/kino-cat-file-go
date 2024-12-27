@@ -12,7 +12,7 @@ import (
 
 const TgBotApiGetFile = "https://api.telegram.org/bot%s/getFile?file_id=%s"
 const TgBotApiDownload = "https://api.telegram.org/file/bot%s/%s"
-const TorrentFilesPath = "/root/torrent_files/%s"
+const TorrentFilesPath = "/root/torrents_to_processed/%s"
 
 type getFileResponse struct {
 	Ok     bool `json:"ok"`
