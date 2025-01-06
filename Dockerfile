@@ -6,7 +6,7 @@ RUN go mod tidy
 RUN CGO_ENABLED=0 go build -o /app/kino-cat-file-go
 
 FROM alpine:latest
-RUN apk add --no-cache transmission-cli sqlite
+RUN apk add --no-cache sqlite
 WORKDIR /root/
 COPY --from=builder /app/kino-cat-file-go .
 CMD ["./kino-cat-file-go"]

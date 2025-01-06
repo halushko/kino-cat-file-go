@@ -1,20 +1,29 @@
 package handlers
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/halushko/kino-cat-core-go/nats_helper"
+	"github.com/zeebo/bencode"
 	"io"
 	"kino-cat-file-go/database"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
-	"strings"
 )
 
+type Torrent struct {
+	Info struct {
+		Name   string `bencode:"name"`
+		Length int64  `bencode:"length"`
+		Files  []struct {
+			Length int64  `bencode:"length"`
+			Path   string `bencode:"path"`
+		} `bencode:"files"`
+	} `bencode:"info"`
+}
+
 const TorrentFileSpath = "/root/torrents_to_process/%s_%s"
-const TorrentMessageToUser = "(%s) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%s"
+const TorrentMessageToUser = "(%d Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%s"
 
 func StartGetTorrentFileListener() {
 	processor := func(data []byte) {
@@ -119,36 +128,29 @@ func isTorrent(mimeType string) bool {
 	return mimeType == "application/x-bittorrent"
 }
 
-func getTorrentContentInfo(pathToTorrentFile string) (string, string, error) {
-	cmd := exec.Command("transmission-show", pathToTorrentFile)
+func getTorrentContentInfo(pathToTorrentFile string) (float64, string, error) {
+	file, err := os.Open(pathToTorrentFile)
+	if err != nil {
+		fmt.Printf("[getTorrentContentInfo] Помилка відкриття файлу: %v\n", err)
+		return 0, "", err
+	}
+	defer file.Close()
 
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return "", "", fmt.Errorf("[getTorrentContentInfo] Помилка виконання transmission-show: %v, stderr: %s", err, stderr.String())
+	var torrent Torrent
+	if err := bencode.NewDecoder(file).Decode(&torrent); err != nil {
+		fmt.Printf("[getTorrentContentInfo] Помилка розбору файлу: %v\n", err)
+		return 0, "", err
 	}
 
-	output := out.String()
-	lines := strings.Split(output, "\n")
-	var size string
-	var name string
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "Name:") {
-			name = strings.TrimSpace(strings.TrimPrefix(line, "Name:"))
-		} else if strings.HasPrefix(line, "Total size:") {
-			size = strings.TrimSpace(strings.TrimPrefix(line, "Total size:"))
+	if len(torrent.Info.Files) > 0 {
+		for _, f := range torrent.Info.Files {
+			fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", f.Path, f.Length)
 		}
+	} else {
+		fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
 	}
-
-	if name == "" || size == "" {
-		return "", "", fmt.Errorf("[getTorrentContentInfo] Не вдалося дістати інформацію з файлу %s", pathToTorrentFile)
-	}
-
-	log.Printf("[getTorrentContentInfo] Отримана інформація - Ім'я: %s, Розмів: %s", name, size)
+	size := float64(torrent.Info.Length) / (1024 * 1024 * 1024)
+	name := torrent.Info.Name
 
 	return size, name, nil
 }
