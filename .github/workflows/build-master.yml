@@ -40,7 +40,8 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/kino-cat-file-go:alpha
             ${{ secrets.DOCKER_HUB_USERNAME }}/kino-cat-file-go:${{ github.ref_name }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/kino-cat-file-go:latest
+          platforms: linux/amd64,linux/arm64
 
       - name: Complete
         run: |
-          echo "Docker image published with tags: latest and ${{ github.ref_name }}"
+          echo "Docker image published with tags: ${{ github.ref_name }}, beta-latest, alpha and latest"

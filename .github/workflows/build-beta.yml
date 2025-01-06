@@ -52,4 +52,4 @@ jobs:
 
       - name: Complete
         run: |
-          echo "Docker image published with tags: latest and ${{ env.DOCKER_TAG }}"
+          echo "Docker image published with tags: beta-latest and beta-${{ env.DOCKER_TAG }}"
