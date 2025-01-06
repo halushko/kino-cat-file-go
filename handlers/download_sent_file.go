@@ -100,7 +100,7 @@ func downloadFile(url string, savePath string) error {
 }
 
 func checkMimeType(mimeType string) bool {
-	if isTorrent(mimeType) {
+	if !isTorrent(mimeType) {
 		log.Printf("[StartGetTorrentFileListener] Невідомий MIME-тип: %s", mimeType)
 		return false
 	}
