@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/halushko/kino-cat-core-go/nats_helper"
 	"io"
+	"kino-cat-file-go/database"
 	"log"
 	"net/http"
 	"os"
@@ -33,10 +34,17 @@ func StartGetTorrentFileListener() {
 
 			savePath := ""
 			messageToUser := ""
+			var id int64
+			id = 0
 
 			switch {
 			case isTorrent(mimeType):
-				savePath = fmt.Sprintf(TorrentFileSpath, fileId, fileName)
+				id, err = database.GetOrCreateId(fileId, fileName)
+				if err != nil {
+					log.Printf("[StartGetTorrentFileListener] ERROR: %v", err)
+					return
+				}
+				savePath = fmt.Sprintf(TorrentFileSpath, id, fileName)
 			}
 
 			if err := downloadFile(fileUrl, savePath); err != nil {
@@ -51,7 +59,7 @@ func StartGetTorrentFileListener() {
 				if err != nil {
 					log.Printf("[StartGetTorrentFileListener] ERROR Не вдалося отримати інформацію по торент файлу: %v", err)
 				}
-				messageToUser = fmt.Sprintf(TorrentMessageToUser, contentSize, contentName, fileId)
+				messageToUser = fmt.Sprintf(TorrentMessageToUser, contentSize, contentName, id)
 			}
 
 			if err = nats_helper.PublishTextMessage("TELEGRAM_OUTPUT_TEXT_QUEUE", userId, messageToUser); err != nil {
