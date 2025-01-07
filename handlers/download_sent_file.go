@@ -168,13 +168,11 @@ func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, err
 			}
 			log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", path, f.Length)
 		}
-		fileName = fmt.Sprintf("%s та ще %d файл(ів)", torrent.Info.Files[0].Path, len(torrent.Info.Files)-1)
 	} else {
 		log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
 		totalSize = torrent.Info.Length
-		fileName = torrent.Info.Name
 	}
-
+	fileName = torrent.Info.Name
 	sizeInGb := float64(totalSize) / (1024 * 1024 * 1024)
 	return sizeInGb, fileName, manyFiles, nil
 }
