@@ -23,7 +23,7 @@ type Torrent struct {
 }
 
 const TorrentFileSpath = "/root/torrents_to_process/%s_%s"
-const TorrentMessageToUser = "(%d Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%s"
+const TorrentMessageToUser = "(%.2f Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%d"
 
 func StartGetTorrentFileListener() {
 	processor := func(data []byte) {
