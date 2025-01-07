@@ -15,6 +15,7 @@ func main() {
 	database.InitDB(dbPath)
 
 	go handlers.StartGetTorrentFileListener()
+	go handlers.MoveTorrentFileToDownloads()
 
 	select {}
 	defer logger_helper.SoftLogClose(logFile)

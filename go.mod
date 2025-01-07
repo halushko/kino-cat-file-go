@@ -3,7 +3,7 @@ module kino-cat-file-go
 go 1.23.2
 
 require (
-	github.com/halushko/kino-cat-core-go v0.0.0-20250106125624-25f0081dd2a3
+	github.com/halushko/kino-cat-core-go v0.0.0-20250107134440-c4a6636370ba
 	github.com/zeebo/bencode v1.0.0
 	modernc.org/sqlite v1.34.4
 )

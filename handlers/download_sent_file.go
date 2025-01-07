@@ -23,7 +23,7 @@ type Torrent struct {
 	} `bencode:"info"`
 }
 
-const TorrentFileSpath = "/root/torrents_to_process/%d_%s"
+const TorrentFileSpath = "/root/torrents_to_process/%s"
 const TorrentMessageToUser = "(%.2f Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%d"
 
 func StartGetTorrentFileListener() {
@@ -36,12 +36,6 @@ func StartGetTorrentFileListener() {
 		log.Printf("[StartGetTorrentFileListener] Отримано файл: \"%s\" (%s) з NATS від користувача %d розміром %d", fileName, fileId, userId, size)
 
 		if userId != 0 && checkMimeType(mimeType) {
-			botToken := os.Getenv("BOT_TOKEN")
-			if botToken == "" {
-				log.Printf("[StartGetTorrentFileListener] BOT_TOKEN не задано")
-				return
-			}
-
 			savePath := ""
 			messageToUser := ""
 			var id int64
@@ -54,7 +48,7 @@ func StartGetTorrentFileListener() {
 					log.Printf("[StartGetTorrentFileListener] ERROR: %v", err)
 					return
 				}
-				savePath = fmt.Sprintf(TorrentFileSpath, id, fileName)
+				savePath = fmt.Sprintf(TorrentFileSpath, fileName)
 			}
 
 			if err := downloadFile(fileUrl, savePath); err != nil {
@@ -73,12 +67,14 @@ func StartGetTorrentFileListener() {
 				if manyFiles {
 					messageToUser = messageToUser + fmt.Sprintf("\nПереглянути файли: /expand_%d", id)
 				}
+				if err := database.AddFileLocation(id, savePath, contentName, contentSize); err != nil {
+					nats_helper.SendMessageToUser(userId, "Помилка при спробі збереження файлу в БД")
+					log.Printf("[StartGetTorrentFileListener] Не вдалося надіслати повідомлення \"%s\" через Телеграм бот", messageToUser)
+					return
+				}
 			}
 
-			if err = nats_helper.PublishTextMessage("TELEGRAM_OUTPUT_TEXT_QUEUE", userId, messageToUser); err != nil {
-				log.Printf("[StartGetTorrentFileListener] Не вдалося надіслати повідомлення \"%s\" через Телеграм бот", messageToUser)
-				return
-			}
+			nats_helper.SendMessageToUser(userId, messageToUser)
 		}
 	}
 
