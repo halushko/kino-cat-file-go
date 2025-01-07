@@ -21,7 +21,7 @@ func InitDB(filepath string) {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			file_id TEXT NOT NULL UNIQUE,
 			file_name TEXT NOT NULL,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
 	)
 	createTable(`
@@ -29,7 +29,7 @@ func InitDB(filepath string) {
 			id INTEGER PRIMARY KEY,
 			path TEXT NOT NULL,
 			name TEXT NOT NULL,
-			length REAL NOT NULL,
+			length REAL NOT NULL
 		)`,
 	)
 }
