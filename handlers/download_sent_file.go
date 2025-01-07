@@ -22,7 +22,7 @@ type Torrent struct {
 	} `bencode:"info"`
 }
 
-const TorrentFileSpath = "/root/torrents_to_process/%s_%d"
+const TorrentFileSpath = "/root/torrents_to_process/%d_%s"
 const TorrentMessageToUser = "(%.2f Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%d"
 
 func StartGetTorrentFileListener() {
