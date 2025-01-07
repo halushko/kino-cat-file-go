@@ -64,11 +64,14 @@ func StartGetTorrentFileListener() {
 
 			switch {
 			case isTorrent(mimeType):
-				contentSize, contentName, err := getTorrentContentInfo(savePath)
+				contentSize, contentName, manyFiles, err := getTorrentContentInfo(savePath)
 				if err != nil {
 					log.Printf("[StartGetTorrentFileListener] ERROR Не вдалося отримати інформацію по торент файлу: %v", err)
 				}
 				messageToUser = fmt.Sprintf(TorrentMessageToUser, contentSize, contentName, id)
+				if manyFiles {
+					messageToUser = messageToUser + fmt.Sprintf("\nПереглянути файли: /expand_%d", id)
+				}
 			}
 
 			if err = nats_helper.PublishTextMessage("TELEGRAM_OUTPUT_TEXT_QUEUE", userId, messageToUser); err != nil {
@@ -128,21 +131,23 @@ func isTorrent(mimeType string) bool {
 	return mimeType == "application/x-bittorrent"
 }
 
-func getTorrentContentInfo(pathToTorrentFile string) (float64, string, error) {
+func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, error) {
 	file, err := os.Open(pathToTorrentFile)
 	if err != nil {
 		fmt.Printf("[getTorrentContentInfo] Помилка відкриття файлу: %v\n", err)
-		return 0, "", err
+		return 0, "", false, err
 	}
 	defer file.Close()
 
 	var torrent Torrent
 	if err := bencode.NewDecoder(file).Decode(&torrent); err != nil {
 		fmt.Printf("[getTorrentContentInfo] Помилка розбору файлу: %v\n", err)
-		return 0, "", err
+		return 0, "", false, err
 	}
 
+	flag := false
 	if len(torrent.Info.Files) > 0 {
+		flag = true
 		for _, f := range torrent.Info.Files {
 			fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", f.Path, f.Length)
 		}
@@ -152,5 +157,5 @@ func getTorrentContentInfo(pathToTorrentFile string) (float64, string, error) {
 	size := float64(torrent.Info.Length) / (1024 * 1024 * 1024)
 	name := torrent.Info.Name
 
-	return size, name, nil
+	return size, name, flag, nil
 }
