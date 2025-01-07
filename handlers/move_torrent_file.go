@@ -59,7 +59,7 @@ func MoveTorrentFileToDownloads() {
 		Function: processor,
 	}
 
-	if err := nats_helper.StartNatsListener("TELEGRAM_INPUT_FILE_QUEUE", listener); err != nil {
+	if err := nats_helper.StartNatsListener("FILE_MOVE_TO_FOLDER", listener); err != nil {
 		log.Printf("[StartGetHelpCommandListener] Не вдалося почати роботу над обробкою торент файлів")
 	}
 }
