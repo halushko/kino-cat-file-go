@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type Torrent struct {
@@ -16,8 +17,8 @@ type Torrent struct {
 		Name   string `bencode:"name"`
 		Length int64  `bencode:"length"`
 		Files  []struct {
-			Length int64       `bencode:"length"`
-			Path   interface{} `bencode:"path"`
+			Length int64    `bencode:"length"`
+			Path   []string `bencode:"path"`
 		} `bencode:"files"`
 	} `bencode:"info"`
 }
@@ -145,28 +146,18 @@ func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, err
 		return 0, "", false, err
 	}
 
-	var totalSize int64
+	totalSize := int64(0)
 	var fileName string
 	manyFiles := len(torrent.Info.Files) > 0
 	log.Printf("[getTorrentContentInfo] INFO: %v", torrent)
 
 	if manyFiles {
+		var filePaths []string
 		for _, f := range torrent.Info.Files {
 			totalSize += f.Length
-			path := ""
-			switch v := f.Path.(type) {
-			case string:
-				path = v
-			case []interface{}:
-				parts := make([]string, len(v))
-				for i, part := range v {
-					parts[i] = part.(string)
-				}
-				path = fmt.Sprintf("%s", parts)
-			default:
-				log.Printf("[getTorrentContentInfo] Невідомий тип path: %T", v)
-			}
-			log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", path, f.Length)
+			fullPath := strings.Join(f.Path, "/")
+			filePaths = append(filePaths, fullPath)
+			log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт", fullPath, f.Length)
 		}
 	} else {
 		log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
