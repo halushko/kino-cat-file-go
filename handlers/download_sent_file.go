@@ -22,7 +22,7 @@ type Torrent struct {
 	} `bencode:"info"`
 }
 
-const TorrentFileSpath = "/root/torrents_to_process/%s_%s"
+const TorrentFileSpath = "/root/torrents_to_process/%s_%d"
 const TorrentMessageToUser = "(%.2f Gb) \"%s\"\nВи дійсно хочете завантажити цей торент?\nТак: /start_%d"
 
 func StartGetTorrentFileListener() {
@@ -146,6 +146,10 @@ func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, err
 	}
 
 	flag := false
+	size := -1.0
+	name := "noname"
+	fmt.Printf("[getTorrentContentInfo] INFO: %v", torrent)
+
 	if len(torrent.Info.Files) > 0 {
 		flag = true
 		for _, f := range torrent.Info.Files {
@@ -153,9 +157,9 @@ func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, err
 		}
 	} else {
 		fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
+		size = float64(torrent.Info.Length) / (1024 * 1024 * 1024)
+		name = torrent.Info.Name
 	}
-	size := float64(torrent.Info.Length) / (1024 * 1024 * 1024)
-	name := torrent.Info.Name
 
 	return size, name, flag, nil
 }
