@@ -24,18 +24,18 @@ func MoveTorrentFileToDownloads() {
 		fileIdStr := args[0]
 		fileId, err := strconv.ParseInt(fileIdStr, 10, 64)
 		if err != nil {
-			fmt.Printf("[MoveTorrentFileToDownloads] Помилка конвертації ID %s в число: %v", fileIdStr, err)
+			log.Printf("[MoveTorrentFileToDownloads] Помилка конвертації ID %s в число: %v", fileIdStr, err)
 			return
 		}
 
 		filePath, torrentName, torrentLength, err := database.GetFileInfo(fileId)
 		if err != nil {
-			fmt.Printf("[MoveTorrentFileToDownloads] Помилка отримання інформації по торенту з ID=%s: %v", fileIdStr, err)
+			log.Printf("[MoveTorrentFileToDownloads] Помилка отримання інформації по торенту з ID=%s: %v", fileIdStr, err)
 			return
 		}
 
 		if _, err := os.Stat(StartTorrentsFolder); os.IsNotExist(err) {
-			fmt.Printf("[MoveTorrentFileToDownloads] Директорія %s не існує", StartTorrentsFolder)
+			log.Printf("[MoveTorrentFileToDownloads] Директорія %s не існує", StartTorrentsFolder)
 			return
 		}
 
@@ -45,11 +45,11 @@ func MoveTorrentFileToDownloads() {
 
 		err = os.Rename(filePath, destinationPath)
 		if err != nil {
-			fmt.Printf("[MoveTorrentFileToDownloads] Помилка переміщення файлу %s : %v", StartTorrentsFolder, err)
+			log.Printf("[MoveTorrentFileToDownloads] Помилка переміщення файлу %s : %v", StartTorrentsFolder, err)
 			return
 		}
 
-		fmt.Printf("[MoveTorrentFileToDownloads] Файл успішно переміщено в %s", StartTorrentsFolder)
+		log.Printf("[MoveTorrentFileToDownloads] Файл успішно переміщено в %s", StartTorrentsFolder)
 
 		message := fmt.Sprintf(StartTorrentMessageToUser, torrentName, torrentLength)
 		nats_helper.SendMessageToUser(userId, message)
