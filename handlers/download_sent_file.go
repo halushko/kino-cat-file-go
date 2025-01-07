@@ -134,32 +134,34 @@ func isTorrent(mimeType string) bool {
 func getTorrentContentInfo(pathToTorrentFile string) (float64, string, bool, error) {
 	file, err := os.Open(pathToTorrentFile)
 	if err != nil {
-		fmt.Printf("[getTorrentContentInfo] Помилка відкриття файлу: %v\n", err)
+		log.Printf("[getTorrentContentInfo] Помилка відкриття файлу: %v", err)
 		return 0, "", false, err
 	}
 	defer file.Close()
 
 	var torrent Torrent
 	if err := bencode.NewDecoder(file).Decode(&torrent); err != nil {
-		fmt.Printf("[getTorrentContentInfo] Помилка розбору файлу: %v\n", err)
+		log.Printf("[getTorrentContentInfo] Помилка розбору файлу: %v", err)
 		return 0, "", false, err
 	}
 
-	flag := false
-	size := -1.0
-	name := "noname"
-	fmt.Printf("[getTorrentContentInfo] INFO: %v", torrent)
+	var totalSize int64
+	var fileName string
+	manyFiles := len(torrent.Info.Files) > 0
+	log.Printf("[getTorrentContentInfo] INFO: %v", torrent)
 
-	if len(torrent.Info.Files) > 0 {
-		flag = true
+	if manyFiles {
 		for _, f := range torrent.Info.Files {
-			fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", f.Path, f.Length)
+			log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", f.Path, f.Length)
+			totalSize += f.Length
 		}
+		fileName = fmt.Sprintf("%s та ще %d файл(ів)", torrent.Info.Files[0].Path, len(torrent.Info.Files)-1)
 	} else {
-		fmt.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
-		size = float64(torrent.Info.Length) / (1024 * 1024 * 1024)
-		name = torrent.Info.Name
+		log.Printf("[getTorrentContentInfo] Файл: %s, Розмір: %d байт\n", torrent.Info.Name, torrent.Info.Length)
+		totalSize = torrent.Info.Length
+		fileName = torrent.Info.Name
 	}
 
-	return size, name, flag, nil
+	sizeInGb := float64(totalSize) / (1024 * 1024 * 1024)
+	return sizeInGb, fileName, manyFiles, nil
 }
