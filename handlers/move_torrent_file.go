@@ -3,11 +3,12 @@ package handlers
 import (
 	"fmt"
 	"github.com/halushko/kino-cat-core-go/nats_helper"
+	"io"
 	"kino-cat-file-go/database"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 const StartTorrentMessageToUser = "Торент: %s\nРозміром: %.2f Gb передано до торент клієнта"
@@ -39,17 +40,16 @@ func MoveTorrentFileToDownloads() {
 			return
 		}
 
-		fileName := filePath[strings.LastIndex(filePath, "/")+1:]
+		fileName := filepath.Base(filePath)
+		destinationPath := filepath.Join(StartTorrentsFolder, fileName)
 
-		destinationPath := fmt.Sprintf("%s/%s", StartTorrentsFolder, fileName)
-
-		err = os.Rename(filePath, destinationPath)
+		err = moveFile(filePath, destinationPath)
 		if err != nil {
-			log.Printf("[MoveTorrentFileToDownloads] Помилка переміщення файлу %s : %v", StartTorrentsFolder, err)
+			log.Printf("[MoveTorrentFileToDownloads] Помилка переміщення файлу: %v", err)
 			return
 		}
 
-		log.Printf("[MoveTorrentFileToDownloads] Файл успішно переміщено в %s", StartTorrentsFolder)
+		log.Printf("[MoveTorrentFileToDownloads] Файл успішно переміщено в %s", destinationPath)
 
 		message := fmt.Sprintf(StartTorrentMessageToUser, torrentName, torrentLength)
 		nats_helper.SendMessageToUser(userId, message)
@@ -62,4 +62,30 @@ func MoveTorrentFileToDownloads() {
 	if err := nats_helper.StartNatsListener("FILE_MOVE_TO_FOLDER", listener); err != nil {
 		log.Printf("[StartGetHelpCommandListener] Не вдалося почати роботу над обробкою торент файлів")
 	}
+}
+
+func moveFile(sourcePath, destinationPath string) error {
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		return fmt.Errorf("[moveFile] Помилка відкриття файлу: %w", err)
+	}
+	defer sourceFile.Close()
+
+	destinationFile, err := os.Create(destinationPath)
+	if err != nil {
+		return fmt.Errorf("[moveFile] Помилка створення файлу: %w", err)
+	}
+	defer destinationFile.Close()
+
+	_, err = io.Copy(destinationFile, sourceFile)
+	if err != nil {
+		return fmt.Errorf("[moveFile] Помилка копіювання файлу: %w", err)
+	}
+
+	err = os.Remove(sourcePath)
+	if err != nil {
+		return fmt.Errorf("[moveFile] Помилка видалення оригінального файлу: %w", err)
+	}
+
+	return nil
 }
